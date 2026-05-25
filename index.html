@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILD FRAME — Bird Photography Gallery</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Thai:wght@300;400;600&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --ink:#0b1510;
+  --deep:#0f1e14;
+  --forest:#162b1c;
+  --moss:#243d28;
+  --fern:#3d6642;
+  --sage:#6b9470;
+  --mist:#a8c4aa;
+  --fog:#d4e3d0;
+  --cream:#f2ede0;
+  --gold:#c9a84c;
+  --amber:#b86e2a;
+  --rust:#8b3a1a;
+  --dawn:#e8c87a;
+  --sky:#4a7a9b;
+}
+
+html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);}
+body{font-family:'Courier Prime',monospace;cursor:crosshair;}
+
+#three-canvas{
+  position:fixed;inset:0;display:block;width:100%!important;height:100%!important;
+}
+
+/* ── LOADING ─────────────────────────────────── */
+#loading{
+  position:fixed;inset:0;z-index:200;
+  background:var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;
+  transition:opacity 1s ease;
+}
+#loading.out{opacity:0;pointer-events:none;}
+.ld-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:52px;font-weight:300;letter-spacing:0.12em;
+  color:var(--cream);
+  text-transform:uppercase;
+}
+.ld-title em{color:var(--gold);font-style:italic;}
+.ld-sub{
+  font-size:10px;letter-spacing:0.35em;color:var(--sage);text-transform:uppercase;
+}
+.ld-track{width:240px;height:1px;background:var(--moss);position:relative;}
+.ld-fill{height:1px;background:var(--gold);width:0%;transition:width .25s ease;}
+.ld-msg{font-size:9px;letter-spacing:.2em;color:var(--fern);text-transform:uppercase;}
+
+/* ── HUD TOP BAR ─────────────────────────────── */
+#topbar{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  padding:20px 36px;
+  background:linear-gradient(to bottom,rgba(11,21,16,.98) 0%,transparent 100%);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  pointer-events:none;
+}
+.brand{
+  font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;
+  letter-spacing:.14em;color:var(--cream);text-transform:uppercase;
+  line-height:1;
+}
+.brand em{color:var(--gold);font-style:italic;}
+.brand-sub{
+  font-size:8px;letter-spacing:.28em;color:var(--sage);text-transform:uppercase;
+  margin-top:4px;
+}
+.coord-display{
+  font-size:9px;letter-spacing:.15em;color:var(--fern);text-align:right;line-height:1.8;
+}
+
+/* ── CROSSHAIR ───────────────────────────────── */
+#crosshair{
+  position:fixed;top:50%;left:50%;z-index:40;
+  transform:translate(-50%,-50%);
+  pointer-events:none;opacity:.5;
+}
+#crosshair line{stroke:var(--gold);stroke-width:.8;}
+
+/* ── COMPASS ─────────────────────────────────── */
+#compass{
+  position:fixed;bottom:36px;left:36px;z-index:50;
+  width:72px;height:72px;pointer-events:none;
+}
+
+/* ── HINT BAR ────────────────────────────────── */
+#hints{
+  position:fixed;bottom:36px;right:36px;z-index:50;
+  text-align:right;pointer-events:none;
+  line-height:2;font-size:9px;letter-spacing:.18em;
+  color:var(--fern);text-transform:uppercase;
+}
+#hints span{color:var(--sage);}
+
+/* ── CAPTION POPUP ───────────────────────────── */
+#caption-popup{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:60;
+  background:rgba(11,21,16,.95);border:1px solid var(--moss);
+  padding:14px 28px;text-align:center;
+  backdrop-filter:blur(16px);
+  opacity:0;transition:opacity .4s ease;pointer-events:none;
+  max-width:420px;
+}
+#caption-popup.show{opacity:1;}
+.cap-title{
+  font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;
+  color:var(--dawn);letter-spacing:.06em;margin-bottom:4px;
+}
+.cap-meta{font-size:8px;letter-spacing:.22em;color:var(--sage);text-transform:uppercase;}
+
+/* ── UPLOAD PANEL ────────────────────────────── */
+#panel{
+  position:fixed;top:0;right:-380px;bottom:0;z-index:100;
+  width:360px;
+  background:rgba(11,21,16,.98);
+  border-left:1px solid var(--moss);
+  backdrop-filter:blur(24px);
+  transition:right .55s cubic-bezier(.16,1,.3,1);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+#panel.open{right:0;}
+
+#panel-tab{
+  position:absolute;left:-42px;top:50%;transform:translateY(-50%);
+  width:42px;height:110px;
+  background:rgba(11,21,16,.97);
+  border:1px solid var(--moss);border-right:none;
+  cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  transition:background .2s;
+}
+#panel-tab:hover{background:rgba(36,61,40,.9);}
+.tab-icon{width:14px;height:14px;stroke:var(--gold);fill:none;stroke-width:1.5;flex-shrink:0;}
+.tab-label{
+  writing-mode:vertical-rl;font-size:8px;letter-spacing:.25em;
+  color:var(--gold);text-transform:uppercase;
+}
+
+.panel-head{
+  padding:32px 28px 20px;
+  border-bottom:1px solid var(--moss);flex-shrink:0;
+}
+.panel-title{
+  font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;
+  color:var(--cream);margin-bottom:4px;
+}
+.panel-title em{color:var(--gold);}
+.panel-subtitle{font-size:8px;letter-spacing:.25em;color:var(--sage);text-transform:uppercase;}
+
+.panel-body{flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:20px;}
+.panel-body::-webkit-scrollbar{width:2px;}
+.panel-body::-webkit-scrollbar-track{background:var(--forest);}
+.panel-body::-webkit-scrollbar-thumb{background:var(--fern);}
+
+.field-label{font-size:8px;letter-spacing:.22em;color:var(--sage);text-transform:uppercase;margin-bottom:8px;display:block;}
+
+/* Drop zone */
+.dropzone{
+  border:1px dashed var(--fern);
+  padding:28px 16px;text-align:center;cursor:pointer;
+  transition:all .25s ease;position:relative;
+  background:rgba(36,61,40,.1);
+}
+.dropzone:hover,.dropzone.over{border-color:var(--gold);background:rgba(201,168,76,.06);}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz-icon{width:28px;height:28px;stroke:var(--sage);fill:none;stroke-width:1.2;margin:0 auto 12px;display:block;}
+.dz-text{font-size:10px;color:var(--mist);letter-spacing:.1em;line-height:1.8;}
+.dz-text strong{color:var(--gold);}
+
+/* Preview */
+#preview-wrap{display:none;position:relative;}
+#preview-img{width:100%;height:90px;object-fit:cover;border:1px solid var(--moss);}
+.preview-clear{
+  position:absolute;top:6px;right:6px;width:20px;height:20px;
+  background:rgba(11,21,16,.9);border:1px solid var(--fern);
+  color:var(--sage);font-size:10px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.preview-clear:hover{color:var(--cream);}
+
+/* Frame chooser */
+.frame-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.fr-opt{
+  border:1px solid var(--moss);padding:10px 6px;text-align:center;
+  cursor:pointer;font-size:8px;letter-spacing:.12em;color:var(--mist);
+  text-transform:uppercase;transition:all .2s;line-height:1.6;
+}
+.fr-opt:hover,.fr-opt.sel{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.07);}
+.fr-opt .fr-swatch{
+  width:24px;height:14px;margin:0 auto 6px;border:1px solid currentColor;
+}
+
+/* Wall chooser */
+.wall-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.wall-opt{
+  border:1px solid var(--moss);padding:8px 6px;text-align:center;
+  cursor:pointer;font-size:8px;letter-spacing:.12em;color:var(--mist);
+  text-transform:uppercase;transition:all .2s;
+}
+.wall-opt:hover,.wall-opt.sel{border-color:var(--sky);color:var(--sky);background:rgba(74,122,155,.07);}
+
+/* Caption input */
+.cap-in{
+  width:100%;background:rgba(36,61,40,.2);border:1px solid var(--moss);
+  color:var(--cream);padding:10px 12px;font-family:'Courier Prime',monospace;
+  font-size:11px;outline:none;resize:none;height:56px;
+  transition:border-color .2s;
+}
+.cap-in:focus{border-color:var(--gold);}
+.cap-in::placeholder{color:var(--fern);}
+
+/* Slot info */
+.slot-info{font-size:9px;letter-spacing:.14em;color:var(--fern);line-height:1.8;}
+.slot-info strong{color:var(--mist);}
+#slot-counter{
+  display:inline-block;padding:2px 8px;background:var(--moss);
+  font-size:8px;letter-spacing:.15em;color:var(--dawn);text-transform:uppercase;
+}
+
+/* Place button */
+.btn-place{
+  width:100%;background:var(--gold);color:var(--ink);border:none;
+  padding:13px;font-family:'Courier Prime',monospace;font-size:10px;
+  letter-spacing:.2em;text-transform:uppercase;cursor:pointer;
+  font-weight:700;transition:all .2s;
+}
+.btn-place:hover:not(:disabled){background:var(--dawn);transform:translateY(-1px);}
+.btn-place:disabled{background:var(--moss);color:var(--fern);cursor:not-allowed;transform:none;}
+
+.panel-foot{padding:16px 28px;border-top:1px solid var(--moss);flex-shrink:0;}
+.gallery-stats{
+  font-size:8px;letter-spacing:.18em;color:var(--fern);text-align:center;line-height:2;
+}
+
+/* ── NOTIFICATION ────────────────────────────── */
+#notif{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:150;
+  background:rgba(11,21,16,.97);border:1px solid var(--fern);
+  padding:12px 24px;font-size:9px;letter-spacing:.18em;color:var(--mist);
+  text-transform:uppercase;opacity:0;transition:opacity .3s ease;pointer-events:none;
+  white-space:nowrap;
+}
+#notif.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="ld-title">WILD <em>FRAME</em></div>
+  <div class="ld-sub">Bird Photography Gallery · สำรวจนกในธรรมชาติ</div>
+  <div class="ld-track"><div class="ld-fill" id="ld-fill"></div></div>
+  <div class="ld-msg" id="ld-msg">กำลังสร้างแกลเลอรี...</div>
+</div>
+
+<!-- CANVAS -->
+<canvas id="three-canvas"></canvas>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div>
+    <div class="brand">WILD <em>FRAME</em></div>
+    <div class="brand-sub">Bird Photography · Nature Exploration</div>
+  </div>
+  <div class="coord-display" id="coord-display">
+    X: 0.00 &nbsp;|&nbsp; Z: 0.00<br>
+    เดินได้รอบแกลเลอรี
+  </div>
+</div>
+
+<!-- CROSSHAIR -->
+<svg id="crosshair" width="24" height="24" viewBox="0 0 24 24">
+  <line x1="12" y1="2" x2="12" y2="8"/>
+  <line x1="12" y1="16" x2="12" y2="22"/>
+  <line x1="2" y1="12" x2="8" y2="12"/>
+  <line x1="16" y1="12" x2="22" y2="12"/>
+</svg>
+
+<!-- COMPASS -->
+<canvas id="compass" width="72" height="72"></canvas>
+
+<!-- HINTS -->
+<div id="hints">
+  <span>WASD</span> / ลูกศร — เดิน<br>
+  <span>เมาส์</span> — มองรอบ<br>
+  <span>คลิก</span> — ล็อคเมาส์ · <span>ESC</span> ปล่อย
+</div>
+
+<!-- CAPTION POPUP -->
+<div id="caption-popup">
+  <div class="cap-title" id="cap-title"></div>
+  <div class="cap-meta" id="cap-meta"></div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notif" id="notif"></div>
+
+<!-- UPLOAD PANEL -->
+<div id="panel">
+  <div id="panel-tab" onclick="togglePanel()">
+    <svg class="tab-icon" id="tab-svg" viewBox="0 0 14 14">
+      <path d="M2 7h10M7 2l5 5-5 5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="tab-label">Gallery</div>
+  </div>
+
+  <div class="panel-head">
+    <div class="panel-title">แขวนภาพ<br><em>Place Photo</em></div>
+    <div class="panel-subtitle">Bird Photography Exhibition</div>
+  </div>
+
+  <div class="panel-body">
+    <!-- Upload -->
+    <div>
+      <label class="field-label">📷 อัปโหลดภาพ</label>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="file-in" accept="image/*" onchange="onFileChange(event)">
+        <svg class="dz-icon" viewBox="0 0 28 28">
+          <path d="M14 20V8M8 14l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="3" y="18" width="22" height="7" rx="2"/>
+        </svg>
+        <div class="dz-text">
+          <strong>คลิกเพื่อเลือกรูป</strong><br>
+          หรือลากวางที่นี่<br>
+          JPG · PNG · WEBP
+        </div>
+      </div>
+      <div id="preview-wrap">
+        <img id="preview-img" alt="">
+        <div class="preview-clear" onclick="clearImage()">✕</div>
+      </div>
+    </div>
+
+    <!-- Caption -->
+    <div>
+      <label class="field-label">✏️ ชื่อภาพ / Caption</label>
+      <textarea class="cap-in" id="cap-in" placeholder="เช่น: นกกระเต็น ริมคลอง · Kingfisher at Dawn..."></textarea>
+    </div>
+
+    <!-- Frame style -->
+    <div>
+      <label class="field-label">🖼 สไตล์กรอบ</label>
+      <div class="frame-grid">
+        <div class="fr-opt sel" data-f="teak" onclick="selFrame(this)">
+          <div class="fr-swatch" style="background:#4a2e12;"></div>Teak
+        </div>
+        <div class="fr-opt" data-f="gold" onclick="selFrame(this)">
+          <div class="fr-swatch" style="background:linear-gradient(135deg,#c9a84c,#f0d070);"></div>Gold
+        </div>
+        <div class="fr-opt" data-f="ebony" onclick="selFrame(this)">
+          <div class="fr-swatch" style="background:#111;"></div>Ebony
+        </div>
+        <div class="fr-opt" data-f="ivory" onclick="selFrame(this)">
+          <div class="fr-swatch" style="background:#f0ede0;border:1px solid #aaa;"></div>Ivory
+        </div>
+        <div class="fr-opt" data-f="moss" onclick="selFrame(this)">
+          <div class="fr-swatch" style="background:#2d4a30;"></div>Moss
+        </div>
+        <div class="fr-opt" data-f="raw" onclick="selFrame(this)">
+          <div class="fr-swatch" style="background:none;border:1px dashed #6b9470;"></div>Raw
+        </div>
+      </div>
+    </div>
+
+    <!-- Wall chooser -->
+    <div>
+      <label class="field-label">🧭 เลือกผนัง</label>
+      <div class="wall-grid">
+        <div class="wall-opt sel" data-w="0" onclick="selWall(this)">ผนังเหนือ<br><span style="color:var(--fern)">North</span></div>
+        <div class="wall-opt" data-w="1" onclick="selWall(this)">ผนังใต้<br><span style="color:var(--fern)">South</span></div>
+        <div class="wall-opt" data-w="2" onclick="selWall(this)">ผนังตะวันออก<br><span style="color:var(--fern)">East</span></div>
+        <div class="wall-opt" data-w="3" onclick="selWall(this)">ผนังตะวันตก<br><span style="color:var(--fern)">West</span></div>
+      </div>
+    </div>
+
+    <!-- Slot info -->
+    <div class="slot-info">
+      ช่องว่างบนผนังที่เลือก: <span id="slot-counter">กำลังคำนวณ...</span>
+    </div>
+
+    <!-- Place button -->
+    <button class="btn-place" id="btn-place" disabled onclick="placePhoto()">
+      ➜ แขวนรูปในแกลเลอรี
+    </button>
+  </div>
+
+  <div class="panel-foot">
+    <div class="gallery-stats" id="gallery-stats">
+      ภาพที่แสดงอยู่: <span id="placed-count">0</span> / <span id="total-slots">0</span><br>
+      WILD FRAME · Bird Photography Exhibition
+    </div>
+  </div>
+</div>
+
+<!-- THREE.JS R128 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let scene, cam, renderer, clock;
+let yaw=0, pitch=0, locked=false;
+let mF=false,mB=false,mL=false,mR=false;
+let uploadedImg=null, selFrameStyle='teak', selWallIdx=0;
+let panelOpen=false;
+let photoMeshes=[]; // {mesh, slot, caption, isUser}
+let nearFrame=null;
+let totalPlaced=0;
+
+// Room dims
+const RW=26, RH=7, RD=26, WALL_GAP=0.35;
+
+// Slot definitions per wall: [wall index, local x offsets]
+// Wall 0=North(z=-RD/2), 1=South(z=+RD/2), 2=East(x=+RW/2), 3=West(x=-RW/2)
+const SLOT_ROWS=2;
+const SLOT_COLS=5;
+const SLOT_W=2.2, SLOT_H=1.7;
+const SLOT_Y=[2.2, 4.1]; // heights
+const SLOT_X_OFFSETS=[-9,-4.5,0,4.5,9];
+
+// Build all slots
+const WALLS=[
+  {id:0,name:'North',dir:'south',pos:z=>new THREE.Vector3(z,0,-RD/2+WALL_GAP),ry:0,
+    xFn:(xi)=>SLOT_X_OFFSETS[xi], zFn:()=>-RD/2+WALL_GAP+0.01},
+  {id:1,name:'South',dir:'north',pos:z=>new THREE.Vector3(z,0,RD/2-WALL_GAP),ry:Math.PI,
+    xFn:(xi)=>SLOT_X_OFFSETS[xi], zFn:()=>RD/2-WALL_GAP-0.01},
+  {id:2,name:'East',dir:'west',pos:z=>new THREE.Vector3(RW/2-WALL_GAP,0,z),ry:-Math.PI/2,
+    xFn:(xi)=>SLOT_X_OFFSETS[xi], zFn:()=>RW/2-WALL_GAP-0.01},
+  {id:3,name:'West',dir:'east',pos:z=>new THREE.Vector3(-RW/2+WALL_GAP,0,z),ry:Math.PI/2,
+    xFn:(xi)=>SLOT_X_OFFSETS[xi], zFn:()=>-RW/2+WALL_GAP+0.01},
+];
+
+let SLOTS=[]; // {wallId, xi, yi, worldPos, worldRy, userData:{caption,isUser,placed}}
+
+function buildSlots(){
+  SLOTS=[];
+  WALLS.forEach(w=>{
+    for(let yi=0;yi<SLOT_ROWS;yi++){
+      for(let xi=0;xi<SLOT_COLS;xi++){
+        const lx=SLOT_X_OFFSETS[xi];
+        const ly=SLOT_Y[yi];
+        let wx,wy=ly,wz,wry=w.ry;
+        if(w.id===0){wx=lx;wz=-RD/2+WALL_GAP+0.02;}
+        else if(w.id===1){wx=lx;wz=RD/2-WALL_GAP-0.02;}
+        else if(w.id===2){wx=RW/2-WALL_GAP-0.02;wz=lx;}
+        else{wx=-RW/2+WALL_GAP+0.02;wz=lx;}
+        SLOTS.push({wallId:w.id,wallName:w.name,xi,yi,wx,wy,wz,wry,
+          mesh:null,caption:'',isUser:false,placed:false});
+      }
+    }
+  });
+  document.getElementById('total-slots').textContent=SLOTS.length;
+}
+
+// ════════════════════════════════════════════════════
+// CANVAS TEXTURES
+// ════════════════════════════════════════════════════
+function texFloor(){
+  const C=512,c=document.createElement('canvas');c.width=C;c.height=C;
+  const x=c.getContext('2d');
+  // Dark parquet base
+  x.fillStyle='#111a13';x.fillRect(0,0,C,C);
+  // Plank lines
+  const plankH=40;
+  for(let row=0;row*plankH<C;row++){
+    const off=(row%2)*55;
+    x.strokeStyle='rgba(30,50,25,0.55)';x.lineWidth=.8;
+    x.beginPath();x.moveTo(0,row*plankH);x.lineTo(C,row*plankH);x.stroke();
+    // vertical joints
+    for(let col=off;col<C;col+=110){
+      x.beginPath();x.moveTo(col,row*plankH);x.lineTo(col,(row+1)*plankH);x.stroke();
+    }
+  }
+  // Grain
+  for(let i=0;i<500;i++){
+    x.fillStyle=`rgba(60,40,15,${Math.random()*.04})`;
+    const rx=Math.random()*C,ry=Math.random()*C;
+    x.fillRect(rx,ry,Math.random()*4+1,.8);
+  }
+  // Edge vignette
+  const g=x.createRadialGradient(C/2,C/2,C*.2,C/2,C/2,C*.7);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.35)');
+  x.fillStyle=g;x.fillRect(0,0,C,C);
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(5,5);return t;
+}
+
+function texWall(h=0){
+  const W=1024,H=512,c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  // Base gradient — deep forest tones
+  const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#192a1c');g.addColorStop(.6,'#141f16');g.addColorStop(1,'#111a13');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  // Noise grain
+  for(let i=0;i<4000;i++){
+    const a=Math.random()*.025;
+    const col=Math.random()>.5?`rgba(40,70,35,${a})`:`rgba(10,20,12,${a})`;
+    x.fillStyle=col;x.fillRect(Math.random()*W,Math.random()*H,2,2);
+  }
+  // Horizontal wainscot panel line at 30% height
+  const lineY=H*.68;
+  x.strokeStyle='rgba(61,102,66,0.18)';x.lineWidth=1;
+  x.beginPath();x.moveTo(0,lineY);x.lineTo(W,lineY);x.stroke();
+  x.strokeStyle='rgba(61,102,66,0.08)';x.lineWidth=3;
+  x.beginPath();x.moveTo(0,lineY+4);x.lineTo(W,lineY+4);x.stroke();
+  // Subtle vertical texture lines
+  for(let i=0;i<12;i++){
+    x.strokeStyle=`rgba(30,55,30,${Math.random()*.06})`;x.lineWidth=1;
+    x.beginPath();x.moveTo(i*90,0);x.lineTo(i*90,H);x.stroke();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,1);return t;
+}
+
+function texCeiling(){
+  const C=256,c=document.createElement('canvas');c.width=C;c.height=C;
+  const x=c.getContext('2d');
+  x.fillStyle='#0e1810';x.fillRect(0,0,C,C);
+  // Grid coffers
+  x.strokeStyle='rgba(36,61,40,0.4)';x.lineWidth=1;
+  for(let i=0;i<9;i++){
+    x.beginPath();x.moveTo(i*32,0);x.lineTo(i*32,C);x.stroke();
+    x.beginPath();x.moveTo(0,i*32);x.lineTo(C,i*32);x.stroke();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,6);return t;
+}
+
+function texPlaceholder(idx){
+  const W=440,H=340,c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  // Background
+  const palettes=[
+    ['#0d2218','#1a4a30','#2d7a50'],
+    ['#0d1a2a','#1a3a60','#2a6a9a'],
+    ['#1a1008','#3a2010','#7a4a18'],
+    ['#0a1a0a','#1a3a1a','#3a6a2a'],
+    ['#1a0d1a','#3a1a4a','#6a3a8a'],
+    ['#1a1800','#3a3600','#7a6a00'],
+    ['#0d1a1a','#1a3a40','#2a6a70'],
+    ['#1a0808','#3a1010','#7a2a1a'],
+    ['#0a180a','#1a3818','#3a6830'],
+    ['#18180a','#383810','#687820'],
+  ];
+  const p=palettes[idx%palettes.length];
+  const g=x.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.7);
+  g.addColorStop(0,p[2]+'55');g.addColorStop(.5,p[1]);g.addColorStop(1,p[0]);
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+
+  // Foliage silhouettes
+  x.fillStyle='rgba(0,0,0,.45)';
+  for(let i=0;i<6;i++){
+    const bx=Math.random()*W,by=H*.55+Math.random()*H*.35;
+    const r=25+Math.random()*45;
+    x.beginPath();x.arc(bx,by,r,0,Math.PI*2);x.fill();
+  }
+  // Branch
+  x.strokeStyle='rgba(0,0,0,.4)';x.lineWidth=3;x.lineCap='round';
+  x.beginPath();x.moveTo(W*.1,H);x.quadraticCurveTo(W*.3,H*.4,W*.5,H*.3);x.stroke();
+  x.lineWidth=1.5;
+  x.beginPath();x.moveTo(W*.35,H*.55);x.lineTo(W*.55,H*.35);x.stroke();
+
+  // Bird silhouette
+  x.fillStyle='rgba(0,0,0,.6)';
+  const birdTypes=[
+    (bx,by,s)=>{// flying bird
+      x.save();x.translate(bx,by);x.scale(s,s);
+      x.beginPath();x.moveTo(0,0);x.bezierCurveTo(-30,-8,-55,0,-60,5);
+      x.bezierCurveTo(-55,2,-30,4,0,0);x.fill();
+      x.beginPath();x.moveTo(0,0);x.bezierCurveTo(30,-8,55,0,60,5);
+      x.bezierCurveTo(55,2,30,4,0,0);x.fill();
+      // body
+      x.beginPath();x.ellipse(0,2,10,5,0,0,Math.PI*2);x.fill();
+      // tail
+      x.beginPath();x.moveTo(-8,4);x.lineTo(-22,14);x.lineTo(-16,4);x.closePath();x.fill();
+      x.restore();
+    },
+    (bx,by,s)=>{// perched bird
+      x.save();x.translate(bx,by);x.scale(s,s);
+      x.beginPath();x.ellipse(0,0,15,10,-.2,0,Math.PI*2);x.fill();
+      x.beginPath();x.ellipse(-5,-12,9,9,0,0,Math.PI*2);x.fill();// head
+      x.beginPath();x.moveTo(-12,-14);x.lineTo(-22,-13);x.lineTo(-14,-11);x.closePath();x.fill();// beak
+      x.restore();
+    },
+    (bx,by,s)=>{// heron silhouette
+      x.save();x.translate(bx,by);x.scale(s,s);
+      x.beginPath();x.moveTo(0,-40);x.lineTo(-4,-20);x.lineTo(-25,20);
+      x.lineTo(-28,38);x.lineTo(-18,38);x.lineTo(-10,10);x.lineTo(0,0);
+      x.lineTo(10,10);x.lineTo(18,38);x.lineTo(28,38);x.lineTo(25,20);
+      x.lineTo(4,-20);x.closePath();x.fill();x.restore();
+    },
+  ];
+  const bi=idx%birdTypes.length;
+  birdTypes[bi](W*.5,H*.32,1.2+Math.random()*.4);
+
+  // Vignette
+  const vg=x.createRadialGradient(W/2,H/2,H*.2,W/2,H/2,H*.8);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');
+  x.fillStyle=vg;x.fillRect(0,0,W,H);
+
+  // Slot number watermark
+  x.fillStyle='rgba(201,168,76,.35)';
+  x.font='bold 9px monospace';x.textAlign='center';x.textBaseline='bottom';
+  x.fillText(`SLOT ${idx+1} — อัปโหลดภาพของคุณ`,W/2,H-10);
+
+  return new THREE.CanvasTexture(c);
+}
+
+function texFrame(style,W=460,H=360){
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  const bw=22;
+  const colors={
+    teak:['#5c3a18','#7a5228','#4a2e10'],
+    gold:['#c9a84c','#f0d070','#8a6010'],
+    ebony:['#1a1a1a','#2a2a2a','#0a0a0a'],
+    ivory:['#f0ede0','#fff8f0','#d4cfc0'],
+    moss:['#2d4a30','#3d6642','#1a2e1c'],
+    raw:[null,null,null],
+  };
+  const col=colors[style]||colors.teak;
+  if(style==='raw'){
+    x.strokeStyle='rgba(107,148,112,0.5)';x.lineWidth=1.5;x.setLineDash([6,4]);
+    x.strokeRect(bw/2,bw/2,W-bw,H-bw);
+  } else {
+    const g=x.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,col[0]);g.addColorStop(.4,col[1]);g.addColorStop(1,col[2]);
+    x.fillStyle=g;
+    // Top, bottom, left, right bars
+    x.fillRect(0,0,W,bw);x.fillRect(0,H-bw,W,bw);
+    x.fillRect(0,0,bw,H);x.fillRect(W-bw,0,bw,H);
+    // Inner bevel
+    x.strokeStyle=style==='gold'?'rgba(255,235,120,.4)':'rgba(255,255,255,.08)';
+    x.lineWidth=1;x.setLineDash([]);
+    x.strokeRect(bw+1,bw+1,W-bw*2-2,H-bw*2-2);
+    // Outer shadow line
+    x.strokeStyle='rgba(0,0,0,.3)';
+    x.strokeRect(1,1,W-2,H-2);
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+function texUserPhoto(img,caption,frameStyle){
+  const W=440,H=340,bw=22;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  // Draw image centered in frame
+  const iw=W-bw*2,ih=caption?H-bw*2-32:H-bw*2;
+  const ar=img.naturalWidth/img.naturalHeight;
+  let dw=iw,dh=iw/ar;
+  if(dh>ih){dh=ih;dw=ih*ar;}
+  const dx=bw+(iw-dw)/2,dy=bw+(ih-dh)/2;
+  x.drawImage(img,dx,dy,dw,dh);
+  // Frame overlay
+  const ft=texFrame(frameStyle,W,H);
+  x.drawImage(ft.image,0,0,W,H);
+  // Caption bar
+  if(caption){
+    const barH=30;
+    x.fillStyle='rgba(11,21,16,.92)';x.fillRect(bw,H-bw-barH,W-bw*2,barH);
+    x.fillStyle='#c9a84c';x.font='italic 13px "Cormorant Garamond",serif';
+    x.textAlign='center';x.textBaseline='middle';
+    x.fillText(caption.slice(0,55),W/2,H-bw-barH/2);
+  }
+  const t=new THREE.CanvasTexture(c);
+  return t;
+}
+
+// ════════════════════════════════════════════════════
+// THREE.JS SCENE
+// ════════════════════════════════════════════════════
+function initThree(){
+  const canvas=document.getElementById('three-canvas');
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0b1510);
+  scene.fog=new THREE.FogExp2(0x0b1510,.014);
+
+  cam=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.1,120);
+  cam.position.set(0,1.72,4);
+
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=0.88;
+
+  clock=new THREE.Clock();
+  buildRoom();
+  buildLighting();
+  buildSlots();
+  buildAllFrames();
+  animate();
+}
+
+function buildRoom(){
+  // Floor
+  const fl=new THREE.Mesh(
+    new THREE.PlaneGeometry(RW,RD),
+    new THREE.MeshLambertMaterial({map:texFloor()})
+  );
+  fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
+
+  // Ceiling
+  const ct=new THREE.Mesh(
+    new THREE.PlaneGeometry(RW,RD),
+    new THREE.MeshLambertMaterial({map:texCeiling(),color:0x223322})
+  );
+  ct.rotation.x=Math.PI/2;ct.position.y=RH;scene.add(ct);
+
+  // Walls
+  const wt=texWall();
+  const wallMat=new THREE.MeshLambertMaterial({map:wt,color:0x99bb99});
+  const wallDefs=[
+    {pos:[0,RH/2,-RD/2],ry:0,w:RW,h:RH},
+    {pos:[0,RH/2,RD/2],ry:Math.PI,w:RW,h:RH},
+    {pos:[RW/2,RH/2,0],ry:-Math.PI/2,w:RD,h:RH},
+    {pos:[-RW/2,RH/2,0],ry:Math.PI/2,w:RD,h:RH},
+  ];
+  wallDefs.forEach(({pos,ry,w,h})=>{
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),wallMat.clone());
+    m.position.set(...pos);m.rotation.y=ry;m.receiveShadow=true;scene.add(m);
+  });
+
+  // Baseboards
+  const bm=new THREE.MeshLambertMaterial({color:0x1e3322});
+  const bbH=0.18,bbD=0.05;
+  [
+    {p:[0,bbH/2,-RD/2+bbD/2],s:[RW,bbH,bbD]},
+    {p:[0,bbH/2,RD/2-bbD/2],s:[RW,bbH,bbD]},
+    {p:[RW/2-bbD/2,bbH/2,0],s:[bbD,bbH,RD]},
+    {p:[-RW/2+bbD/2,bbH/2,0],s:[bbD,bbH,RD]},
+  ].forEach(({p,s})=>{
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),bm);
+    b.position.set(...p);b.scale.set(...s);scene.add(b);
+  });
+
+  // Coving (ceiling trim)
+  const cm=new THREE.MeshLambertMaterial({color:0x223322});
+  [
+    {p:[0,RH-.08,-RD/2+.04],s:[RW,.15,.08]},
+    {p:[0,RH-.08,RD/2-.04],s:[RW,.15,.08]},
+    {p:[RW/2-.04,RH-.08,0],s:[.08,.15,RD]},
+    {p:[-RW/2+.04,RH-.08,0],s:[.08,.15,RD]},
+  ].forEach(({p,s})=>{
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),cm);
+    b.position.set(...p);b.scale.set(...s);scene.add(b);
+  });
+
+  // Plants
+  [-10,-3,3,10].forEach(xp=>{
+    [-10,10].forEach(zp=>{
+      addPlant(xp,zp);
+    });
+  });
+
+  // Benches
+  [[0,0,0],[0,0,-7],[0,0,7]].forEach(([x,y,z])=>addBench(x,y,z));
+}
+
+function addPlant(px,pz){
+  const potM=new THREE.MeshLambertMaterial({color:0x4a2e10});
+  const pot=new THREE.Mesh(new THREE.CylinderGeometry(.28,.2,.55,10),potM);
+  pot.position.set(px,.275,pz);scene.add(pot);
+  // Stem
+  const stemM=new THREE.MeshLambertMaterial({color:0x2a1a08});
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.04,.06,.8,6),stemM);
+  stem.position.set(px,.9,pz);scene.add(stem);
+  // Foliage blobs
+  const fM=new THREE.MeshLambertMaterial({color:0x1e4020});
+  [[0,1.6,0,.9,1.1],[-.3,1.4,.2,.7,1],[.3,1.4,-.2,.7,1],[0,1.2,0,.6,.8]].forEach(([dx,dy,dz,r,sy])=>{
+    const f=new THREE.Mesh(new THREE.SphereGeometry(r,8,8),fM.clone());
+    f.position.set(px+dx,dy,pz+dz);f.scale.y=sy;scene.add(f);
+  });
+}
+
+function addBench(px,py,pz){
+  const m=new THREE.MeshLambertMaterial({color:0x3a2410});
+  const seat=new THREE.Mesh(new THREE.BoxGeometry(2.8,.1,.7),m);
+  seat.position.set(px,.52,pz);seat.castShadow=true;scene.add(seat);
+  [[-1,0,-.28],[1,0,-.28],[-1,0,.28],[1,0,.28]].forEach(([lx,ly,lz])=>{
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(.1,.52,.1),m);
+    leg.position.set(px+lx,.26,pz+lz);scene.add(leg);
+  });
+}
+
+function buildLighting(){
+  scene.add(new THREE.AmbientLight(0x2d4030,.9));
+  // Track lights on ceiling
+  const spotPositions=[
+    [0,RH-.1,0],[-8,RH-.1,-8],[8,RH-.1,-8],
+    [-8,RH-.1,8],[8,RH-.1,8],[0,RH-.1,-9],[0,RH-.1,9],
+    [-8,RH-.1,0],[8,RH-.1,0],
+  ];
+  spotPositions.forEach(([x,y,z])=>{
+    const sp=new THREE.SpotLight(0xfff8e8,1.8);
+    sp.position.set(x,y,z);
+    sp.target.position.set(x,0,z);
+    sp.angle=Math.PI/7;sp.penumbra=.45;
+    sp.castShadow=true;sp.shadow.mapSize.set(512,512);
+    scene.add(sp);scene.add(sp.target);
+    // Fixture disc
+    const disc=new THREE.Mesh(
+      new THREE.CylinderGeometry(.12,.12,.04,12),
+      new THREE.MeshBasicMaterial({color:0xffffff})
+    );
+    disc.position.set(x,RH-.02,z);scene.add(disc);
+  });
+  // Warm fill
+  [-10,10].forEach(xp=>{
+    const pl=new THREE.PointLight(0x3a5a3a,.5,18);
+    pl.position.set(xp,2.5,0);scene.add(pl);
+  });
+}
+
+function buildAllFrames(){
+  SLOTS.forEach((slot,i)=>{
+    const tex=texPlaceholder(i);
+    addFrameToScene(slot,tex,'',false);
+  });
+  updateStats();
+}
+
+function addFrameToScene(slot,texture,caption,isUser){
+  // Remove old mesh if exists
+  if(slot.mesh){scene.remove(slot.mesh);slot.mesh.traverse(c=>{if(c.geometry)c.geometry.dispose();});}
+
+  const group=new THREE.Group();
+  group.position.set(slot.wx,slot.wy,slot.wz);
+  group.rotation.y=slot.wry;
+
+  // Photo plane
+  const photo=new THREE.Mesh(
+    new THREE.PlaneGeometry(SLOT_W,SLOT_H),
+    new THREE.MeshBasicMaterial({map:texture,transparent:true})
+  );
+  group.add(photo);
+
+  // Frame bars
+  const fc=isUser?0xc9a84c:0x2a1a0a;
+  const fm=new THREE.MeshLambertMaterial({color:fc});
+  const fw=SLOT_W+.08,fh=SLOT_H+.08,ft=.05,fd=.07;
+  [[0,fh/2,-.01,fw,ft,fd],[0,-fh/2,-.01,fw,ft,fd],
+   [-fw/2,0,-.01,ft,fh,fd],[fw/2,0,-.01,ft,fh,fd]].forEach(([x,y,z,w,h,d])=>{
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),fm);
+    bar.position.set(x,y,z);group.add(bar);
+  });
+
+  // Subtle glow for user photos
+  if(isUser){
+    const gl=new THREE.PointLight(0xc9a84c,.6,2.5);
+    gl.position.set(0,0,.4);group.add(gl);
+  }
+
+  group.userData={slot,caption,isUser};
+  slot.mesh=group;
+  slot.caption=caption;
+  slot.isUser=isUser;
+  slot.placed=isUser;
+  scene.add(group);
+  photoMeshes.push(group);
+}
+
+// ════════════════════════════════════════════════════
+// CONTROLS
+// ════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.code==='KeyW'||e.code==='ArrowUp')mF=true;
+  if(e.code==='KeyS'||e.code==='ArrowDown')mB=true;
+  if(e.code==='KeyA'||e.code==='ArrowLeft')mL=true;
+  if(e.code==='KeyD'||e.code==='ArrowRight')mR=true;
+  if(e.code==='Escape'&&locked)document.exitPointerLock();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='KeyW'||e.code==='ArrowUp')mF=false;
+  if(e.code==='KeyS'||e.code==='ArrowDown')mB=false;
+  if(e.code==='KeyA'||e.code==='ArrowLeft')mL=false;
+  if(e.code==='KeyD'||e.code==='ArrowRight')mR=false;
+});
+
+document.getElementById('three-canvas').addEventListener('click',()=>{
+  if(!panelOpen)document.getElementById('three-canvas').requestPointerLock();
+});
+
+document.addEventListener('pointerlockchange',()=>{
+  locked=document.pointerLockElement===document.getElementById('three-canvas');
+  document.getElementById('crosshair').style.opacity=locked?.7:0;
+});
+
+document.addEventListener('mousemove',e=>{
+  if(!locked)return;
+  yaw-=e.movementX*.0018;
+  pitch-=e.movementY*.0018;
+  pitch=Math.max(-Math.PI/2.5,Math.min(Math.PI/2.5,pitch));
+});
+
+window.addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// ════════════════════════════════════════════════════
+// ANIMATE
+// ════════════════════════════════════════════════════
+const _fwd=new THREE.Vector3(),_right=new THREE.Vector3();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=clock.getDelta();
+  const spd=4.5;
+
+  cam.rotation.order='YXZ';
+  cam.rotation.y=yaw;cam.rotation.x=pitch;
+
+  if(mF||mB||mL||mR){
+    cam.getWorldDirection(_fwd);_fwd.y=0;_fwd.normalize();
+    _right.crossVectors(_fwd,cam.up).normalize();
+    if(mF)cam.position.addScaledVector(_fwd,spd*dt);
+    if(mB)cam.position.addScaledVector(_fwd,-spd*dt);
+    if(mL)cam.position.addScaledVector(_right,-spd*dt);
+    if(mR)cam.position.addScaledVector(_right,spd*dt);
+    const B=RW/2-.9;
+    cam.position.x=Math.max(-B,Math.min(B,cam.position.x));
+    cam.position.z=Math.max(-B,Math.min(B,cam.position.z));
+    cam.position.y=1.72;
+  }
+
+  updateCaption();
+  drawCompass();
+
+  // Coord display
+  document.getElementById('coord-display').innerHTML=
+    `X: ${cam.position.x.toFixed(1)} &nbsp;|&nbsp; Z: ${cam.position.z.toFixed(1)}<br>
+     หันหน้า: ${wallFacing()}`;
+
+  renderer.render(scene,cam);
+}
+
+function wallFacing(){
+  const a=((yaw*180/Math.PI)%360+360)%360;
+  if(a<45||a>315)return'ทิศใต้';
+  if(a<135)return'ทิศตะวันตก';
+  if(a<225)return'ทิศเหนือ';
+  return'ทิศตะวันออก';
+}
+
+// ════════════════════════════════════════════════════
+// CAPTION PROXIMITY
+// ════════════════════════════════════════════════════
+let captionTimer=null;
+function updateCaption(){
+  let nearest=null,nd=3.5;
+  photoMeshes.forEach(g=>{
+    const d=cam.position.distanceTo(g.position);
+    if(d<nd){nd=d;nearest=g;}
+  });
+  const pop=document.getElementById('caption-popup');
+  if(nearest!==nearFrame){
+    nearFrame=nearest;
+    if(nearest){
+      document.getElementById('cap-title').textContent=nearest.userData.caption||`Slot ${nearest.userData.slot.wallName}`;
+      document.getElementById('cap-meta').textContent=
+        nearest.userData.isUser?'📷 ภาพของคุณ · Your Photo':'🔲 ช่องว่าง — อัปโหลดรูปของคุณที่นี่';
+      pop.classList.add('show');
+    } else {
+      pop.classList.remove('show');
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
+// COMPASS
+// ════════════════════════════════════════════════════
+function drawCompass(){
+  const cv=document.getElementById('compass');
+  const x=cv.getContext('2d');
+  const cx=36,cy=36,r=32;
+  x.clearRect(0,0,72,72);
+  // Circle
+  x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);
+  x.fillStyle='rgba(11,21,16,.85)';x.fill();
+  x.strokeStyle='#243d28';x.lineWidth=1;x.stroke();
+  // Needle
+  const a=-yaw;
+  x.save();x.translate(cx,cy);x.rotate(a);
+  // North (gold)
+  x.beginPath();x.moveTo(0,-24);x.lineTo(5,8);x.lineTo(0,4);x.lineTo(-5,8);x.closePath();
+  x.fillStyle='#c9a84c';x.fill();
+  // South (dark)
+  x.beginPath();x.moveTo(0,24);x.lineTo(5,-8);x.lineTo(0,-4);x.lineTo(-5,-8);x.closePath();
+  x.fillStyle='#243d28';x.fill();
+  x.restore();
+  // Labels
+  x.font='7px monospace';x.fillStyle='#6b9470';x.textAlign='center';x.textBaseline='middle';
+  x.fillText('N',cx,cy-20);x.fillText('S',cx,cy+20);
+  x.fillText('E',cx+20,cy);x.fillText('W',cx-20,cy);
+  // Center dot
+  x.beginPath();x.arc(cx,cy,2,0,Math.PI*2);x.fillStyle='#c9a84c';x.fill();
+}
+
+// ════════════════════════════════════════════════════
+// PANEL UI
+// ════════════════════════════════════════════════════
+function togglePanel(){
+  panelOpen=!panelOpen;
+  document.getElementById('panel').classList.toggle('open',panelOpen);
+  if(panelOpen&&locked)document.exitPointerLock();
+  const svg=document.getElementById('tab-svg').querySelector('path');
+  svg.setAttribute('d',panelOpen?'M12 7H2M7 2l-5 5 5 5':'M2 7h10M7 2l5 5-5 5');
+  updateSlotCounter();
+}
+
+function selFrame(el){
+  document.querySelectorAll('.fr-opt').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  selFrameStyle=el.dataset.f;
+}
+
+function selWall(el){
+  document.querySelectorAll('.wall-opt').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  selWallIdx=parseInt(el.dataset.w);
+  updateSlotCounter();
+}
+
+function updateSlotCounter(){
+  const avail=SLOTS.filter(s=>s.wallId===selWallIdx&&!s.placed).length;
+  const total=SLOTS.filter(s=>s.wallId===selWallIdx).length;
+  const el=document.getElementById('slot-counter');
+  el.textContent=`${avail} / ${total} ช่อง`;
+  el.style.color=avail>0?'var(--dawn)':'var(--rust)';
+}
+
+function onFileChange(e){
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      uploadedImg=img;
+      const pw=document.getElementById('preview-wrap');
+      document.getElementById('preview-img').src=ev.target.result;
+      pw.style.display='block';
+      document.querySelector('.dropzone').style.display='none';
+      document.getElementById('btn-place').disabled=false;
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(f);
+}
+
+// Drag-drop
+const dz=document.getElementById('dropzone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('over');
+  const f=e.dataTransfer.files[0];
+  if(f){document.getElementById('file-in').files=e.dataTransfer.files;onFileChange({target:{files:[f]}});}
+});
+
+function clearImage(){
+  uploadedImg=null;
+  document.getElementById('preview-wrap').style.display='none';
+  document.querySelector('.dropzone').style.display='block';
+  document.getElementById('file-in').value='';
+  document.getElementById('btn-place').disabled=true;
+}
+
+function placePhoto(){
+  if(!uploadedImg)return;
+  const caption=document.getElementById('cap-in').value.trim()||'Bird Photography';
+  // Find first available slot on selected wall
+  const avail=SLOTS.filter(s=>s.wallId===selWallIdx&&!s.placed);
+  if(!avail.length){
+    notify('ไม่มีช่องว่างบนผนังนี้ — เลือกผนังอื่น');return;
+  }
+  const slot=avail[0];
+  const tex=texUserPhoto(uploadedImg,caption,selFrameStyle);
+  // Remove from old photoMeshes
+  photoMeshes=photoMeshes.filter(g=>g.userData.slot!==slot);
+  addFrameToScene(slot,tex,caption,true);
+  totalPlaced++;
+  updateStats();
+  clearImage();
+  document.getElementById('cap-in').value='';
+  updateSlotCounter();
+  notify(`✓ แขวนรูป "${caption.slice(0,25)}" บนผนัง ${['เหนือ','ใต้','ตะวันออก','ตะวันตก'][selWallIdx]}แล้ว`);
+  togglePanel();
+}
+
+function updateStats(){
+  document.getElementById('placed-count').textContent=SLOTS.filter(s=>s.placed).length;
+  document.getElementById('total-slots').textContent=SLOTS.length;
+}
+
+function notify(msg){
+  const el=document.getElementById('notif');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+// ════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════
+const LOAD_STEPS=[
+  'กำลังสร้างแกลเลอรี 3 มิติ...',
+  'สร้าง Texture จาก Canvas API...',
+  'วางกรอบรูปบนผนัง...',
+  'ติดตั้งระบบแสงสว่าง...',
+  'เปิดประตูแกลเลอรี...',
+];
+function boot(){
+  const fill=document.getElementById('ld-fill');
+  const msg=document.getElementById('ld-msg');
+  let step=0;
+  const iv=setInterval(()=>{
+    step++;
+    fill.style.width=(step/LOAD_STEPS.length*100)+'%';
+    msg.textContent=LOAD_STEPS[step-1]||'พร้อมแล้ว!';
+    if(step>=LOAD_STEPS.length){
+      clearInterval(iv);
+      setTimeout(()=>{
+        document.getElementById('loading').classList.add('out');
+        setTimeout(()=>document.getElementById('loading').remove(),1000);
+      },500);
+    }
+  },280);
+  initThree();
+}
+window.addEventListener('load',boot);
+</script>
+</body>
+</html>
